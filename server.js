@@ -1,62 +1,86 @@
 const fs = require('fs');
 const express = require('express');
 
-const port = 3000;
+const port = 4001;
 const app = express();
 
-const users = [
-  { id: 1, name: "John Doe" },
-  { id: 2, name: "Bob Smith" },
-  { id: 3, name: "Alber Johnson" }
-]
+app.use(express.json());
 
-/* app.get("/users", (req, res) => {
-  console.log(req.query)
-  const {name} = req.query;
-  
-  
-  const result = users.filter((user) => user.name.toLowerCase().includes(name.toLowerCase()));
-  res.json(result);
-  }) */
-app.use(express.json())
- 
-/* app.post('/users', (req, res) => {
-  const newUser = req.body;
-  console.log(req.body);
-  
-  newUser.id = users.length + 1;
-  users.push(newUser);
-  res.status(201).json(newUser);
-}) */
+const database = 'data.json'
 
+let todos = JSON.parse(fs.readFileSync(database, 'utf-8'));
 
-/* app.put('/users/:id', (req, res) => {
-  const { id } = req.params;
-  const updatedUser = req.body;
-
-  const userIndex = users.findIndex(user => user.id === parseInt(id));
-
-  if (userIndex !== -1) {
-    users[userIndex] = {...users[userIndex], ...updatedUser}
-    res.json(users);
-  } else {
-    res.status(404).json({message: 'User not found'})
+function nextId(todos) {
+    const ids = todos.map(todo => todo.id);
+    if (ids.length === 0) {
+      return 1;
+    }
+    const maxId = Math.max(...ids);
+    return maxId + 1;
   }
-}) */
 
-app.delete('/users/:id', (req, res) => {
-  const { id } = req.params;
-
-  const userIndex = users.findIndex(user => user.id === parseInt(id));
-
-  if(userIndex !== -1) {
-    users.splice(userIndex, 1);
-    res.json(users)
-  } else {
-    res.status(404).json({message: 'User not found'})
+  function writeFile(todo) {
+    fs.writeFileSync(database, JSON.stringify(todo, null, 1), 'utf-8')
   }
+
+//GET
+app.get('/todos', (req, res) => {
+    console.log(todos);
 })
+
+
+//POST
+app.post('/todos/add', (req, res) => {
+    const newTodo = req.body.todo;
+
+    if(!newTodo){
+        console.log("You should add a todo!");
+    }
+
+    todos.push({id: nextId(todos), todo: newTodo});
+    writeFile(todos);
+    res.status(201).json(newTodo);
+   // console.log(`Congratulation you successfuly added your new todo: ${newTodo}`);
+})
+
+
+//PUT
+app.put('/todos/update/:id', (req, res) => {
+    const {id} = req.params;
+    const {newTodo} = req.body;
+
+    const filteredTodoIndex = todos.findIndex(todo => todo.id === parseInt(id));
+
+    if(filteredTodoIndex !== -1) {
+        todos[filteredTodoIndex].todo = newTodo;
+        writeFile(todos);
+        res.json("Todo succesfully updated!")
+    } else {
+        console.log(`Todo is not found with id: ${id}`);
+    }
+})
+
+
+//DELETE
+app.delete('/todos/delete/:id', (req, res) => {
+    const {id} = req.params;
+
+    const todoIndex = todos.findIndex(todo => todo.id === parseInt(id));
+
+    if(todoIndex !== -1) {
+        todos.splice(todoIndex, 1);
+        writeFile(todos);
+        res.json(`Todo with id: ${id} is successfuly deleted!`)
+    } else {
+        console.log(`Todo is not found with id: ${id}`);
+    }
+})
+
+
+
 
 app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+    console.log(`Server is listening on port: ${port}`);
 })
+
+module.exports = { port };
